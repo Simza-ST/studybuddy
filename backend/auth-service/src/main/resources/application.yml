@@ -1,0 +1,38 @@
+spring:
+  application:
+    name: auth-service
+  profiles:
+    active: dev
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+  datasource:
+    url: jdbc:postgresql://localhost:5432/studydb
+    username: study
+    password: study
+    driver-class-name: org.postgresql.Driver
+  redis:
+    host: localhost
+    port: 6379
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+
+server:
+  port: 8001
+  servlet:
+    context-path: /api
+
+logging:
+  level:
+    root: INFO
+    com.studybuddy: DEBUG
+
+jwt:
+  secret: ${JWT_SECRET:Z3Jhdml0eS1pcy1hLXNlY3VyZS1rZXktZm9yLUhTNTEyLWFuZC1zcHJpbmctYm9vdC1hcHBsaWNhdGlvbnM=}
+  expiration: ${JWT_EXPIRATION:86400000}

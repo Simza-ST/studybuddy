@@ -1,0 +1,195 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: studybuddy-postgres
+    environment:
+      POSTGRES_USER: study
+      POSTGRES_PASSWORD: study
+      POSTGRES_DB: studydb
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./infra/init-db.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U study"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - studybuddy-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: studybuddy-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - studybuddy-network
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: studybuddy-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmqdata:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - studybuddy-network
+
+  minio:
+    image: minio/minio:latest
+    container_name: studybuddy-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: minio123
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - miniodata:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - studybuddy-network
+
+  gateway:
+    image: nginx:alpine
+    container_name: studybuddy-gateway
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./infra/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - auth-service
+      - upload-service
+      - quiz-service
+      - analytics-service
+      - ai-orchestrator
+    networks:
+      - studybuddy-network
+
+  auth-service:
+    build:
+      context: ./backend/auth-service
+      dockerfile: ../Dockerfile
+    container_name: studybuddy-auth
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/studydb
+      SPRING_DATASOURCE_USERNAME: study
+      SPRING_DATASOURCE_PASSWORD: study
+      JWT_SECRET: Z3Jhdml0eS1pcy1hLXNlY3VyZS1rZXktZm9yLUhTNTEyLWFuZC1zcHJpbmctYm9vdC1hcHBsaWNhdGlvbnM=
+      SPRING_REDIS_HOST: redis
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - studybuddy-network
+
+  upload-service:
+    build:
+      context: ./backend/upload-service
+      dockerfile: ../Dockerfile
+    container_name: studybuddy-upload
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/studydb
+      SPRING_DATASOURCE_USERNAME: study
+      SPRING_DATASOURCE_PASSWORD: study
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: minio
+      MINIO_SECRET_KEY: minio123
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - studybuddy-network
+
+  quiz-service:
+    build:
+      context: ./backend/quiz-service
+      dockerfile: ../Dockerfile
+    container_name: studybuddy-quiz
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/studydb
+      SPRING_DATASOURCE_USERNAME: study
+      SPRING_DATASOURCE_PASSWORD: study
+      SPRING_REDIS_HOST: redis
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - studybuddy-network
+
+  analytics-service:
+    build:
+      context: ./backend/analytics-service
+      dockerfile: ../Dockerfile
+    container_name: studybuddy-analytics
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/studydb
+      SPRING_DATASOURCE_USERNAME: study
+      SPRING_DATASOURCE_PASSWORD: study
+      SPRING_REDIS_HOST: redis
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - studybuddy-network
+
+  ai-orchestrator:
+    build:
+      context: ./backend/ai-orchestrator
+      dockerfile: ../Dockerfile
+    container_name: studybuddy-ai
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/studydb
+      SPRING_DATASOURCE_USERNAME: study
+      SPRING_DATASOURCE_PASSWORD: study
+      SPRING_RABBITMQ_HOST: rabbitmq
+      GEMINI_API_KEY: "${GEMINI_API_KEY:-}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - studybuddy-network
+
+volumes:
+  pgdata:
+  redisdata:
+  rabbitmqdata:
+  miniodata:
+
+networks:
+  studybuddy-network:
+    driver: bridge

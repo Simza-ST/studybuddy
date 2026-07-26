@@ -1,0 +1,16 @@
+spring:
+  application:
+    name: analytics-service
+  jpa:
+    hibernate:
+      ddl-auto: update
+  datasource:
+    url: jdbc:postgresql://localhost:5432/studydb
+    username: study
+    password: study
+  redis:
+    host: localhost
+    port: 6379
+
+server:
+  port: 8004

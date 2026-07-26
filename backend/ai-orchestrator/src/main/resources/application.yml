@@ -1,0 +1,22 @@
+spring:
+  application:
+    name: ai-orchestrator
+  jpa:
+    hibernate:
+      ddl-auto: update
+  datasource:
+    url: jdbc:postgresql://localhost:5432/studydb
+    username: study
+    password: study
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+
+server:
+  port: 8005
+
+gemini:
+  api-key: ${GEMINI_API_KEY:}
+  model: gemini-1.5-flash
