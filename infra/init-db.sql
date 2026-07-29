@@ -1,6 +1,5 @@
 -- Create extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-CREATE EXTENSION IF NOT EXISTS "pgvector";
 
 -- Create tables
 CREATE TABLE IF NOT EXISTS users (

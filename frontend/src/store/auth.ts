@@ -43,12 +43,12 @@ export const useAuthStore = create<AuthStore>()(
         }
       },
       logout: async () => {
-        await apiClient.logout();
-        set({
-          user: null,
-          token: null,
-          isAuthenticated: false,
-        });
+        set({ user: null, token: null, isAuthenticated: false });
+        try {
+          await apiClient.logout();
+        } catch {
+          // backend unavailable — local state already cleared
+        }
       },
       setUser: (user: User | null) => set({ user }),
     }),

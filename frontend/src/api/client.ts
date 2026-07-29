@@ -31,8 +31,6 @@ export const apiClient = {
   },
 
   async logout() {
-    // server should clear cookie via endpoint; client ensures any local state is cleared
-    localStorage.removeItem('auth_token');
     await client.post('/auth/logout');
   },
 
